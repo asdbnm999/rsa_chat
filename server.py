@@ -3,7 +3,10 @@ from threading import Thread
 
 
 class Server:
-    def __init__(self, host='127.0.0.1', port=8888):
+    def __init__(self, host='127.0.0.1', port=8881):
+        self.password = input('If you need to set password - type it, else press "Enter">> ')
+        if self.password == '':
+            self.password = 'null'
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((host, port))
         self.server_socket.listen(5)
@@ -33,6 +36,14 @@ class Server:
     def start(self):
         while True:
             client_socket, addr = self.server_socket.accept()
+            if self.password != '':
+                received_password = client_socket.recv(1024).decode()
+                if received_password != self.password:
+                    client_socket.send('Connection refused'.encode('utf-8'))
+                    continue
+                elif received_password == self.password:
+                    client_socket.send('Success'.encode('utf-8'))
+
             print(f"Connected {addr}")
             self.clients[client_socket] = addr  # Добавляем клиентский сокет
 
