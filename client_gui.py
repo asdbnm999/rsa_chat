@@ -1,7 +1,9 @@
 import re
 import tkinter as tk
+from PIL import Image, ImageTk
 from tkinter import messagebox as mb
 from tkinter import filedialog as fd
+from tkinter import font
 import socket
 from threading import Thread
 from crypto_funcs import encrypt, decrypt, check_access
@@ -41,7 +43,8 @@ class ConnectFrame(tk.Frame):
 
     def select_private_key(self, event):
         self.private_key = fd.askopenfile()
-        self.tt_canvas.itemconfig('prvt_k', text='private key selected', fill='purple')
+        if self.private_key:
+            self.tt_canvas.itemconfig('prvt_k', text='private key selected', fill='purple')
 
     def send_messages(self, event=None):
         message = self.message_ent.get()
@@ -187,8 +190,8 @@ class ConnectFrame(tk.Frame):
             if password == '':
                 password = 'null'
 
-            self.client_socket.send(password.encode())
-            server_callback = self.client_socket.recv(1024).decode()
+            self.client_socket.send(encrypt(password, pub_k='server/password_public_key.pem'))
+            server_callback = decrypt(self.client_socket.recv(1024), priv_k='server/password_private_key.pem')
 
             if server_callback == 'Success':
                 rmp = Thread(target=receive_messages, daemon=True)
@@ -255,6 +258,23 @@ class MainWin:
         back_img = tk.PhotoImage(file='images/back36.png')
         confirm_img = tk.PhotoImage(file='images/confirm24.png')
         send_img = tk.PhotoImage(file='images/send24.png')
+        image = Image.open('images/icon16.ico')  # Замените на путь к вашей иконке
+        icon = ImageTk.PhotoImage(image)
+        root.iconphoto(False, icon)
+
+        menu_bar = tk.Menu(master)
+
+        menu_font = font.Font(family='TimesNewRoman', size=8)
+        file_menu = tk.Menu(menu_bar, tearoff=0, font=menu_font)
+        file_menu.add_command(label='О программе...', command=self.about)
+        file_menu.add_command(label='Помощь', command=self.help)
+        menu_bar.add_cascade(label="Дополнительная информация", menu=file_menu, font=menu_font, command=self.about)
+
+        # Применение меню к основному окну
+        master.config(menu=menu_bar)
+        master.resizable(False, False)
+        master.title('RSA')
+
         mainframe = tk.Frame(master)
         mainframe.pack()
 
@@ -262,10 +282,35 @@ class MainWin:
 
         """except ConnectionRefusedError:
             mb.showerror('Error', 'Wrong address!')"""
-
+    @staticmethod
+    def about():
+        mb.showinfo('', ""
+                        "СПО с использованием асимметричного шифрования (RSA).\n"
+                        "Выполнил:\n"
+                        "к-т 412 уч. гр.\n"
+                        "ряд. Онищенко А.")
+    @staticmethod
+    def help():
+        mb.showinfo('', ""
+                        "Поле 'host' соответствует ip адресу сервера, к которому планируется осуществить подключение.\n"
+                        "Поле справа от 'host' должно содержать пароль, если он был установлен сервером.\n"
+                        "Поле 'port' соответствует порту, на котором открыт socket.\n"
+                        "При нажатии на надпись 'select private key file' открывается менеджер файлов для последующего "
+                        "выбора приватного ключа шифрования.\n"
+                        "Поле 'nick' соответствует псевдониму с использованием которого осуществляется подключение, далее "
+                        "псевдоним используется для идентификации пользователя другими пользователями, это поле может "
+                        "содержать от 2 до 10 символов.\n"
+                        "При неправильном заполнении полей вы увидите ошибку.\n"
+                        "Перед началом работы поместите файл private_key.pem и public_key.pem в директорию исполняемого "
+                        "файла, если таковых нет, то создайте их с помощью скрипта rsa_key_create.py.\n"
+                        "Ключи шифрования пользователей должны соответствовать друг другу, в противном случае вы увидите "
+                        "соответствующую ошибку.\n"
+                        "Для более надежного шифрования в режиме двух пользователей советуем использовать две пары "
+                        "ключей шифрования пользователь_1 создает два ключа и передает приватный пользователю_2, "
+                        "далее аналогично для пользователя_2.\nЕсли передача осуществляется не через МНИ, то советуем "
+                        "использовать только защищенные каналы обмена информацией.")
 
 
 root = tk.Tk()
-root.resizable(False, False)
 obj = MainWin(root)
 root.mainloop()
